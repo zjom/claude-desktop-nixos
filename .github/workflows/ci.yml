@@ -9,8 +9,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: actions/checkout@v7
+      - uses: DeterminateSystems/nix-installer-action@v23
       - run: nix flake check -L
       - run: nix build -L .#claude-desktop-cowork
       - name: Evaluate aarch64-linux

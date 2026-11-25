@@ -17,9 +17,9 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/nix-installer-action@v23
 
       - name: Check apt repository for a new release
         id: update
@@ -46,7 +46,7 @@ jobs:
         if: steps.update.outputs.changed == 'true'
         run: nix flake check -L
 
-      - uses: peter-evans/create-pull-request@v7
+      - uses: peter-evans/create-pull-request@v8
         if: steps.update.outputs.changed == 'true'
         with:
           branch: update/claude-desktop
