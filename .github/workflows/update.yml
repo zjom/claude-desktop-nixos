@@ -1,0 +1,60 @@
+name: Update claude-desktop
+
+on:
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: update-claude-desktop
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@v16
+
+      - name: Check apt repository for a new release
+        id: update
+        run: |
+          old=$(jq -r .version pkgs/claude-desktop/sources.json)
+          nix run .#update
+          new=$(jq -r .version pkgs/claude-desktop/sources.json)
+          echo "old=$old" >> "$GITHUB_OUTPUT"
+          echo "new=$new" >> "$GITHUB_OUTPUT"
+          if [ "$old" != "$new" ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+
+      # PRs opened with GITHUB_TOKEN don't trigger other workflows, so build here:
+      # a missing library (autoPatchelf) or a moved Cowork path (asar patch)
+      # fails the job instead of landing a broken PR.
+      - name: Build claude-desktop
+        if: steps.update.outputs.changed == 'true'
+        run: nix build -L .#claude-desktop
+
+      - name: Build claude-desktop-cowork
+        if: steps.update.outputs.changed == 'true'
+        run: nix build -L .#claude-desktop-cowork
+
+      - name: Flake check
+        if: steps.update.outputs.changed == 'true'
+        run: nix flake check -L
+
+      - uses: peter-evans/create-pull-request@v7
+        if: steps.update.outputs.changed == 'true'
+        with:
+          branch: update/claude-desktop
+          delete-branch: true
+          commit-message: "claude-desktop: ${{ steps.update.outputs.old }} -> ${{ steps.update.outputs.new }}"
+          title: "claude-desktop: ${{ steps.update.outputs.old }} -> ${{ steps.update.outputs.new }}"
+          body: |
+            Automated bump from the signed apt repository at
+            https://downloads.claude.ai/claude-desktop/apt/stable.
+
+            `claude-desktop` and `claude-desktop-cowork` built and `nix flake check` passed on x86_64-linux.

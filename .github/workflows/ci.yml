@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - run: nix flake check -L
+      - run: nix build -L .#claude-desktop-cowork
+      - name: Evaluate aarch64-linux
+        run: |
+          nix eval --raw .#packages.aarch64-linux.claude-desktop.drvPath
+          nix eval --raw .#packages.aarch64-linux.claude-desktop-cowork.drvPath
